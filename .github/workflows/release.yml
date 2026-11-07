@@ -31,9 +31,21 @@ jobs:
   publish:
     runs-on: macos-latest
     steps:
+      # A GitHub App token is required here so creating the release PR starts
+      # the normal pull-request CI workflow without manual approval.
+      - name: Create release App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: vidp-labs
+          repositories: vidp-engine
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Test the release commit
         run: swift test
@@ -75,7 +87,7 @@ jobs:
       - name: Create and merge version PR
         env:
           VERSION: ${{ steps.resolve.outputs.version }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -95,21 +107,36 @@ jobs:
           git push --quiet origin ":$BR" 2>/dev/null || true
           git push -u origin "$BR"
 
-          gh label create release-bump --color 0E8A16 \
-            --description "Automated release version change" --force || true
           PR_URL=$(gh pr create --base main --head "$BR" \
             --title "Release v$VERSION" \
-            --body "Bumps the engine version to $VERSION for release." \
-            --label release-bump)
+            --body "Bumps the engine version to $VERSION for release.")
 
-          # This PR contains only the generated version change. Its merge is
-          # intentionally automated, matching the application repositories.
-          gh pr merge "$PR_URL" --merge --delete-branch
+          # This PR contains only the generated version change. Auto-merge is
+          # enabled, but GitHub will wait for the required `test` check.
+          gh pr merge "$PR_URL" --auto --merge --delete-branch
+
+          for attempt in {1..60}; do
+            STATE=$(gh pr view "$PR_URL" --json state --jq '.state')
+            if [ "$STATE" = "MERGED" ]; then
+              break
+            elif [ "$STATE" = "CLOSED" ]; then
+              echo "::error::Release PR was closed without merging"
+              exit 1
+            fi
+            echo "Waiting for release PR CI and auto-merge (attempt $attempt/60)"
+            sleep 30
+          done
+
+          STATE=$(gh pr view "$PR_URL" --json state --jq '.state')
+          [ "$STATE" = "MERGED" ] || {
+            echo "::error::Release PR did not merge after waiting for CI"
+            exit 1
+          }
 
       - name: Tag the merged commit and create GitHub Release
         env:
           VERSION: ${{ steps.resolve.outputs.version }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           git fetch origin main --tags

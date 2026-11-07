@@ -48,6 +48,11 @@ different commit.
 Use the **Release** workflow in GitHub Actions to choose a patch, minor, or
 major release. Breaking public API changes require a new major version.
 
+The release workflow uses a dedicated GitHub App so the generated release PR
+can run the same required CI check as every other pull request. Repository
+secrets `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` must be configured for
+the release workflow.
+
 ## Contributing
 
 Contributions and issues are welcome. `main` is branch-protected; please open
