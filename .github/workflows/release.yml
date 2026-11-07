@@ -1,0 +1,131 @@
+name: Release
+
+# Queue releases so one release cannot interrupt another halfway through.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# One button creates the version PR, merges that generated PR, then publishes
+# an immutable Git tag and GitHub Release for the merged commit.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+      version:
+        description: Exact version, overrides bump (e.g. 0.2.0)
+        type: string
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  publish:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test the release commit
+        run: swift test
+
+      - name: Resolve version
+        id: resolve
+        env:
+          BUMP: ${{ inputs.bump }}
+          EXACT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          CURRENT=$(tr -d '[:space:]' < VERSION)
+          ./scripts/validate-version.sh
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          if [ -n "$EXACT" ]; then
+            VERSION="$EXACT"
+          else
+            case "$BUMP" in
+              major) VERSION="$((MAJOR + 1)).0.0" ;;
+              minor) VERSION="$MAJOR.$((MINOR + 1)).0" ;;
+              *)     VERSION="$MAJOR.$MINOR.$((PATCH + 1))" ;;
+            esac
+          fi
+
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::'$VERSION' is not a MAJOR.MINOR.PATCH version"
+            exit 1
+          }
+
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Release tag v$VERSION already exists and is immutable"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$VERSION (current v$CURRENT)"
+
+      - name: Create and merge version PR
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+          git checkout -B main origin/main
+          BR="release/v$VERSION"
+          git checkout -b "$BR"
+          printf '%s\n' "$VERSION" > VERSION
+          git add VERSION
+          git diff --quiet --cached && {
+            echo "::error::main is already at $VERSION -- nothing to bump"
+            exit 1
+          }
+          git commit -m "Bump engine version to $VERSION"
+          git push --quiet origin ":$BR" 2>/dev/null || true
+          git push -u origin "$BR"
+
+          gh label create release-bump --color 0E8A16 \
+            --description "Automated release version change" --force || true
+          PR_URL=$(gh pr create --base main --head "$BR" \
+            --title "Release v$VERSION" \
+            --body "Bumps the engine version to $VERSION for release." \
+            --label release-bump)
+
+          # This PR contains only the generated version change. Its merge is
+          # intentionally automated, matching the application repositories.
+          gh pr merge "$PR_URL" --merge --delete-branch
+
+      - name: Tag the merged commit and create GitHub Release
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git fetch origin main --tags
+          git checkout -B main origin/main
+
+          if [ "$(tr -d '[:space:]' < VERSION)" != "$VERSION" ]; then
+            echo "::error::Merged VERSION does not match v$VERSION"
+            exit 1
+          fi
+
+          # Never force-update a release tag. The existence check above and
+          # this guarded creation make each version point to one commit.
+          if git show-ref --tags --verify --quiet "refs/tags/v$VERSION"; then
+            echo "::error::Release tag v$VERSION already exists"
+            exit 1
+          fi
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" --title "v$VERSION" --generate-notes

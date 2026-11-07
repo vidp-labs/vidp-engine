@@ -37,6 +37,17 @@ Run the test suite from the repository root:
 swift test
 ```
 
+## Releases
+
+Engine releases use semantic versioning. The `VERSION` file records the
+version being released, and the release workflow creates a matching immutable
+Git tag such as `v0.1.0` after the generated version PR is merged. Applications
+must select an explicit engine version; a released tag is never moved to a
+different commit.
+
+Use the **Release** workflow in GitHub Actions to choose a patch, minor, or
+major release. Breaking public API changes require a new major version.
+
 ## Contributing
 
 Contributions and issues are welcome. `main` is branch-protected; please open

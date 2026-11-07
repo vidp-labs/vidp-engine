@@ -14,5 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate release version
+        run: ./scripts/validate-version.sh
+
       - name: Run Swift package tests
         run: swift test
