@@ -12,8 +12,8 @@ public final class PlaybackEngine: @unchecked Sendable {
         public static let `default` = Configuration(initialVolume: 100, initialSpeed: 1)
 
         public init(initialVolume: Double = 100, initialSpeed: Double = 1) {
-            self.initialVolume = initialVolume
-            self.initialSpeed = initialSpeed
+            self.initialVolume = min(max(initialVolume, 0), 100)
+            self.initialSpeed = max(initialSpeed, 0)
         }
     }
 
@@ -36,72 +36,64 @@ public final class PlaybackEngine: @unchecked Sendable {
         lock.withLock { currentState }
     }
 
-    public func load(_ media: URL) {
-        let info = MediaInfo(url: media)
-        update { state in
-            state.media = info
-            state.isPaused = false
-            state.position = 0
-            state.duration = nil
-            state.videoSize = nil
-        }
-        emit(.mediaLoaded(info))
+    public func load(_ media: URL) throws {
+        _ = media
+        throw PlaybackError.unavailable("No playback backend is configured")
     }
 
     public func stop() {
-        update { state in
-            state.media = nil
-            state.isPaused = true
-            state.position = nil
-            state.duration = nil
-            state.videoSize = nil
+        let next = lock.withLock { () -> PlaybackState in
+            currentState.media = nil
+            currentState.isPaused = true
+            currentState.position = nil
+            currentState.duration = nil
+            currentState.videoSize = nil
+            return currentState
         }
+        emit(.stateChanged(next))
     }
 
-    public func play() { setPaused(false) }
-    public func pause() { setPaused(true) }
+    public func play() throws { throw unavailable() }
+    public func pause() throws { throw unavailable() }
 
-    public func togglePause() {
-        update { $0.isPaused.toggle() }
+    public func togglePause() throws {
+        throw unavailable()
     }
 
-    public func seek(by seconds: Double) {
-        update { state in
-            guard let position = state.position else { return }
-            state.position = max(0, position + seconds)
-        }
+    public func seek(by seconds: Double) throws {
+        _ = seconds
+        throw unavailable()
     }
 
-    public func seek(to seconds: Double) {
-        update { $0.position = max(0, seconds) }
+    public func seek(to seconds: Double) throws {
+        _ = seconds
+        throw unavailable()
     }
 
-    public func setVolume(_ value: Double) {
-        update { $0.volume = min(max(value, 0), 100) }
+    public func setVolume(_ value: Double) throws {
+        _ = value
+        throw unavailable()
     }
 
-    public func setMuted(_ muted: Bool) { update { $0.isMuted = muted } }
-    public func setSpeed(_ value: Double) { update { $0.speed = max(value, 0) } }
+    public func setMuted(_ muted: Bool) throws {
+        _ = muted
+        throw unavailable()
+    }
 
-    public func selectTrack(_ track: TrackSelection) {
-        // Track routing is implemented by the concrete platform backend.
+    public func setSpeed(_ value: Double) throws {
+        _ = value
+        throw unavailable()
+    }
+
+    public func selectTrack(_ track: TrackSelection) throws {
         _ = track
+        throw unavailable()
     }
 
     public func shutdown() { stop() }
 
-    private func setPaused(_ paused: Bool) {
-        update { $0.isPaused = paused }
-    }
-
-    @discardableResult
-    private func update(_ changes: (inout PlaybackState) -> Void) -> PlaybackState {
-        let next = lock.withLock { () -> PlaybackState in
-            changes(&currentState)
-            return currentState
-        }
-        emit(.stateChanged(next))
-        return next
+    private func unavailable() -> PlaybackError {
+        .unavailable("No playback backend is configured")
     }
 
     private func emit(_ event: PlaybackEvent) {

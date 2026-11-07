@@ -8,6 +8,9 @@ native interface and platform integration.
 > Early development: the public API is being established before concrete
 > platform backends are added.
 
+Until a backend is configured, playback commands report
+`PlaybackError.unavailable` rather than claiming that media has loaded.
+
 ## Scope
 
 The engine provides the shared playback contract. Applications remain
