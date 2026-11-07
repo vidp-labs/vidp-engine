@@ -41,6 +41,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           owner: vidp-labs
           repositories: vidp-engine
+          permission-issues: write
 
       - uses: actions/checkout@v4
         with:
@@ -81,10 +82,18 @@ jobs:
             exit 1
           fi
 
+          # VERSION already records the intended first release. In that case
+          # there is no version-file diff to put in a PR, so tag main directly.
+          if [ "$VERSION" = "$CURRENT" ]; then
+            echo "create_pr=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "create_pr=true" >> "$GITHUB_OUTPUT"
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing v$VERSION (current v$CURRENT)"
 
       - name: Create and merge version PR
+        if: steps.resolve.outputs.create_pr == 'true'
         env:
           VERSION: ${{ steps.resolve.outputs.version }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -107,9 +116,12 @@ jobs:
           git push --quiet origin ":$BR" 2>/dev/null || true
           git push -u origin "$BR"
 
+          gh label create release-bump --color 0E8A16 \
+            --description "Automated release version change" --force
           PR_URL=$(gh pr create --base main --head "$BR" \
             --title "Release v$VERSION" \
-            --body "Bumps the engine version to $VERSION for release.")
+            --body "Bumps the engine version to $VERSION for release." \
+            --label release-bump)
 
           # This PR contains only the generated version change. Auto-merge is
           # enabled, but GitHub will wait for the required `test` check.

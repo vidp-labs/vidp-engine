@@ -48,10 +48,16 @@ different commit.
 Use the **Release** workflow in GitHub Actions to choose a patch, minor, or
 major release. Breaking public API changes require a new major version.
 
+For the first release, run the workflow with exact version `0.1.0`; because
+that version is already recorded in `VERSION`, the workflow tags the current
+`main` commit directly. Later releases create and auto-merge a version PR
+before tagging.
+
 The release workflow uses a dedicated GitHub App so the generated release PR
 can run the same required CI check as every other pull request. Repository
 secrets `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` must be configured for
-the release workflow.
+the release workflow. The App also needs Issues: write permission so the
+automated `release-bump` label can be applied.
 
 ## Contributing
 
