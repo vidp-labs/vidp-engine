@@ -34,6 +34,11 @@ Run the test suite from the repository root:
 swift test
 ```
 
+## Contributing
+
+Contributions and issues are welcome. `main` is branch-protected; please open
+a pull request with changes.
+
 ## Related repositories
 
 - [Vidp](https://github.com/vidp-labs/vidp) — the official Vidp application
