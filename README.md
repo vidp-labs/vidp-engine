@@ -76,4 +76,9 @@ a pull request with changes.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Starting with the next engine release, this repository is licensed under the
+Apache License 2.0. See [LICENSE](LICENSE).
+
+The existing `v0.1.0` release was published under MIT and remains available
+under those terms. Future releases will use Apache-2.0 after this change is
+merged.
