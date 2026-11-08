@@ -77,6 +77,16 @@ jobs:
             exit 1
           }
 
+          IFS='.' read -r TARGET_MAJOR TARGET_MINOR TARGET_PATCH <<< "$VERSION"
+          if ((
+            10#$TARGET_MAJOR < 10#$MAJOR ||
+            (10#$TARGET_MAJOR == 10#$MAJOR && 10#$TARGET_MINOR < 10#$MINOR) ||
+            (10#$TARGET_MAJOR == 10#$MAJOR && 10#$TARGET_MINOR == 10#$MINOR && 10#$TARGET_PATCH < 10#$PATCH)
+          )); then
+            echo "::error::Release version $VERSION is lower than current version $CURRENT"
+            exit 1
+          fi
+
           if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
             echo "::error::Release tag v$VERSION already exists and is immutable"
             exit 1
