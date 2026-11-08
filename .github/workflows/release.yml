@@ -41,6 +41,8 @@ jobs:
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           owner: vidp-labs
           repositories: vidp-engine
+          permission-contents: write
+          permission-pull-requests: write
           permission-issues: write
 
       - uses: actions/checkout@v4
@@ -56,6 +58,7 @@ jobs:
         env:
           BUMP: ${{ inputs.bump }}
           EXACT: ${{ inputs.version }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           CURRENT=$(tr -d '[:space:]' < VERSION)
@@ -87,8 +90,10 @@ jobs:
             exit 1
           fi
 
-          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
-            echo "::error::Release tag v$VERSION already exists and is immutable"
+          # A tag without a release means an earlier run failed at the last
+          # step; allow that run to be finished. A published release is final.
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Release v$VERSION is already published and immutable"
             exit 1
           fi
 
@@ -169,12 +174,15 @@ jobs:
             exit 1
           fi
 
-          # Never force-update a release tag. The existence check above and
-          # this guarded creation make each version point to one commit.
+          # Never move a release tag. If an earlier run already pushed this tag,
+          # verify it records the same version and finish the release instead.
           if git show-ref --tags --verify --quiet "refs/tags/v$VERSION"; then
-            echo "::error::Release tag v$VERSION already exists"
-            exit 1
+            [ "$(git show "v$VERSION:VERSION" | tr -d '[:space:]')" = "$VERSION" ] || {
+              echo "::error::Existing tag v$VERSION does not contain version $VERSION"
+              exit 1
+            }
+          else
+            git tag -a "v$VERSION" -m "Release v$VERSION"
+            git push origin "v$VERSION"
           fi
-          git tag -a "v$VERSION" -m "Release v$VERSION"
-          git push origin "v$VERSION"
           gh release create "v$VERSION" --title "v$VERSION" --generate-notes

@@ -56,8 +56,13 @@ before tagging.
 The release workflow uses a dedicated GitHub App so the generated release PR
 can run the same required CI check as every other pull request. Repository
 secrets `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` must be configured for
-the release workflow. The App also needs Issues: write permission so the
-automated `release-bump` label can be applied.
+the release workflow. The App needs Contents: write (push the version branch
+and tag, create the release), Pull requests: write (create and merge the
+version PR), and Issues: write (apply the `release-bump` label).
+
+If a release fails after its tag is pushed, run the workflow again with that
+exact version. The workflow keeps the existing tag and only creates the
+missing release.
 
 ## Contributing
 
