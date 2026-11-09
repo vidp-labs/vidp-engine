@@ -11,6 +11,25 @@ native interface and platform integration.
 Until a backend is configured, playback commands report
 `PlaybackError.unavailable` rather than claiming that media has loaded.
 
+## Using the engine
+
+An application provides a backend for its platform and decoder, then gives it
+to the engine. The application keeps ownership of the native rendering view;
+the backend translates engine commands to the platform implementation.
+
+```swift
+let backend = MyPlatformPlaybackBackend()
+let engine = PlaybackEngine(backend: backend) { event in
+    // Update the application UI from the engine's event contract.
+}
+
+try engine.load(URL(fileURLWithPath: "/path/to/video.mp4"))
+try engine.play()
+```
+
+The backend is replaceable, but the engine-facing commands and events remain
+the same for every application using that engine release.
+
 ## Scope
 
 The engine provides the shared playback contract. Applications remain
