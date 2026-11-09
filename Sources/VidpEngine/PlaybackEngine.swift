@@ -18,18 +18,24 @@ public final class PlaybackEngine: @unchecked Sendable {
     }
 
     private let lock = NSLock()
+    private let backend: PlaybackBackend?
     private let eventHandler: (@Sendable (PlaybackEvent) -> Void)?
     private var currentState: PlaybackState
 
     public init(
+        backend: PlaybackBackend? = nil,
         configuration: Configuration = .default,
         eventHandler: (@Sendable (PlaybackEvent) -> Void)? = nil
     ) {
+        self.backend = backend
         self.eventHandler = eventHandler
         self.currentState = PlaybackState(
             volume: configuration.initialVolume,
             speed: configuration.initialSpeed
         )
+        backend?.eventHandler = { [weak self] event in
+            self?.receive(event)
+        }
     }
 
     public var state: PlaybackState {
@@ -37,63 +43,109 @@ public final class PlaybackEngine: @unchecked Sendable {
     }
 
     public func load(_ media: URL) throws {
-        _ = media
-        throw PlaybackError.unavailable("No playback backend is configured")
+        guard let backend else { throw unavailable() }
+        try backend.load(MediaInfo(url: media))
     }
 
     public func stop() {
-        let next = lock.withLock { () -> PlaybackState in
-            currentState.media = nil
-            currentState.isPaused = true
-            currentState.position = nil
-            currentState.duration = nil
-            currentState.videoSize = nil
-            return currentState
+        backend?.stop()
+        updateState { state in
+            state.media = nil
+            state.isPaused = true
+            state.position = nil
+            state.duration = nil
+            state.videoSize = nil
         }
-        emit(.stateChanged(next))
     }
 
-    public func play() throws { throw unavailable() }
-    public func pause() throws { throw unavailable() }
+    public func play() throws {
+        guard let backend else { throw unavailable() }
+        try backend.play()
+    }
+
+    public func pause() throws {
+        guard let backend else { throw unavailable() }
+        try backend.pause()
+    }
 
     public func togglePause() throws {
-        throw unavailable()
+        guard let backend else { throw unavailable() }
+        try backend.togglePause()
     }
 
     public func seek(by seconds: Double) throws {
-        _ = seconds
-        throw unavailable()
+        guard let backend else { throw unavailable() }
+        try backend.seek(by: seconds)
     }
 
     public func seek(to seconds: Double) throws {
-        _ = seconds
-        throw unavailable()
+        guard let backend else { throw unavailable() }
+        try backend.seek(to: seconds)
     }
 
     public func setVolume(_ value: Double) throws {
-        _ = value
-        throw unavailable()
+        guard let backend else { throw unavailable() }
+        try backend.setVolume(value)
+        updateState { state in
+            state.volume = min(max(value, 0), 100)
+        }
     }
 
     public func setMuted(_ muted: Bool) throws {
-        _ = muted
-        throw unavailable()
+        guard let backend else { throw unavailable() }
+        try backend.setMuted(muted)
+        updateState { state in
+            state.isMuted = muted
+        }
     }
 
     public func setSpeed(_ value: Double) throws {
-        _ = value
-        throw unavailable()
+        guard let backend else { throw unavailable() }
+        try backend.setSpeed(value)
+        updateState { state in
+            state.speed = max(value, 0)
+        }
     }
 
     public func selectTrack(_ track: TrackSelection) throws {
-        _ = track
-        throw unavailable()
+        guard let backend else { throw unavailable() }
+        try backend.selectTrack(track)
     }
 
-    public func shutdown() { stop() }
+    public func shutdown() {
+        stop()
+        backend?.shutdown()
+    }
+
+    private func receive(_ event: PlaybackEvent) {
+        lock.withLock {
+            switch event {
+            case .mediaLoaded(let media):
+                currentState.media = media
+                currentState.isPaused = true
+            case .stateChanged(let state):
+                currentState = state
+            case .videoSizeChanged(let size):
+                currentState.videoSize = size
+            case .ended:
+                currentState.isPaused = true
+            case .failed:
+                break
+            }
+        }
+        eventHandler?(event)
+    }
 
     private func unavailable() -> PlaybackError {
         .unavailable("No playback backend is configured")
+    }
+
+    private func updateState(_ update: (inout PlaybackState) -> Void) {
+        let next = lock.withLock { () -> PlaybackState in
+            update(&currentState)
+            return currentState
+        }
+        emit(.stateChanged(next))
     }
 
     private func emit(_ event: PlaybackEvent) {
