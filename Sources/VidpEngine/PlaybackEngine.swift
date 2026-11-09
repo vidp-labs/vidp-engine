@@ -61,16 +61,25 @@ public final class PlaybackEngine: @unchecked Sendable {
     public func play() throws {
         guard let backend else { throw unavailable() }
         try backend.play()
+        updateState { state in
+            state.isPaused = false
+        }
     }
 
     public func pause() throws {
         guard let backend else { throw unavailable() }
         try backend.pause()
+        updateState { state in
+            state.isPaused = true
+        }
     }
 
     public func togglePause() throws {
         guard let backend else { throw unavailable() }
         try backend.togglePause()
+        updateState { state in
+            state.isPaused.toggle()
+        }
     }
 
     public func seek(by seconds: Double) throws {
@@ -85,9 +94,10 @@ public final class PlaybackEngine: @unchecked Sendable {
 
     public func setVolume(_ value: Double) throws {
         guard let backend else { throw unavailable() }
-        try backend.setVolume(value)
+        let clamped = min(max(value, 0), 100)
+        try backend.setVolume(clamped)
         updateState { state in
-            state.volume = min(max(value, 0), 100)
+            state.volume = clamped
         }
     }
 
@@ -101,9 +111,10 @@ public final class PlaybackEngine: @unchecked Sendable {
 
     public func setSpeed(_ value: Double) throws {
         guard let backend else { throw unavailable() }
-        try backend.setSpeed(value)
+        let clamped = max(value, 0)
+        try backend.setSpeed(clamped)
         updateState { state in
-            state.speed = max(value, 0)
+            state.speed = clamped
         }
     }
 
@@ -114,6 +125,7 @@ public final class PlaybackEngine: @unchecked Sendable {
 
     public func shutdown() {
         stop()
+        backend?.eventHandler = nil
         backend?.shutdown()
     }
 
