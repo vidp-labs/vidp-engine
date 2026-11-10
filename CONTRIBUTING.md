@@ -27,6 +27,12 @@ If a commit is already created, add the sign-off with:
 git commit --amend --signoff
 ```
 
+To sign off every commit on the branch at once:
+
+```sh
+git rebase --signoff origin/main
+```
+
 Use your real name and an email address you control. Do not sign a commit for
 someone else's work unless the DCO permits it.
 
