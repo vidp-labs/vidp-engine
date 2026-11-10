@@ -140,7 +140,7 @@ jobs:
 
           # This PR contains only the generated version change. Auto-merge is
           # enabled, but GitHub will wait for the required `test` check.
-          gh pr merge "$PR_URL" --auto --merge --delete-branch
+          gh pr merge "$PR_URL" --auto --merge
 
           for attempt in {1..60}; do
             STATE=$(gh pr view "$PR_URL" --json state --jq '.state')
@@ -159,6 +159,11 @@ jobs:
             echo "::error::Release PR did not merge after waiting for CI"
             exit 1
           }
+
+          # Auto-merge ignores --delete-branch; cleanup must not fail release.
+          if gh api "repos/vidp-labs/vidp-engine/git/ref/heads/$BR" >/dev/null 2>&1; then
+            gh api --method DELETE "repos/vidp-labs/vidp-engine/git/refs/heads/$BR" || true
+          fi
 
       - name: Tag the merged commit and create GitHub Release
         env:
