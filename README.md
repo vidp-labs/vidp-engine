@@ -86,7 +86,9 @@ missing release.
 ## Contributing
 
 Contributions and issues are welcome. `main` is branch-protected; please open
-a pull request with changes.
+a pull request with changes. The project uses the Developer Certificate of
+Origin instead of a CLA. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+sign-off requirement.
 
 ## Related repositories
 
