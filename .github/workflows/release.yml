@@ -39,7 +39,7 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          owner: vidp-labs
+          owner: vidplabs
           repositories: vidp-engine
           permission-contents: write
           permission-pull-requests: write
@@ -161,8 +161,8 @@ jobs:
           }
 
           # Auto-merge ignores --delete-branch; cleanup must not fail release.
-          if gh api "repos/vidp-labs/vidp-engine/git/ref/heads/$BR" >/dev/null 2>&1; then
-            gh api --method DELETE "repos/vidp-labs/vidp-engine/git/refs/heads/$BR" || true
+          if gh api "repos/vidplabs/vidp-engine/git/ref/heads/$BR" >/dev/null 2>&1; then
+            gh api --method DELETE "repos/vidplabs/vidp-engine/git/refs/heads/$BR" || true
           fi
 
       - name: Tag the merged commit and create GitHub Release
