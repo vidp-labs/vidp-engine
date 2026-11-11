@@ -1,6 +1,6 @@
 # Vidp Engine
 
-The reusable, platform-neutral playback engine for [Vidp](https://github.com/vidp-labs/vidp)
+The reusable, platform-neutral playback engine for [Vidp](https://github.com/vidplabs/vidp)
 applications. `vidp-engine` owns playback commands, state, metadata, track
 selection, and playback events so each Vidp application can provide its own
 native interface and platform integration.
@@ -92,8 +92,8 @@ sign-off requirement.
 
 ## Related repositories
 
-- [Vidp](https://github.com/vidp-labs/vidp) — the official Vidp application
-- [Homebrew Vidp](https://github.com/vidp-labs/homebrew-vidp) — distribution
+- [Vidp](https://github.com/vidplabs/vidp) — the official Vidp application
+- [Homebrew Vidp](https://github.com/vidplabs/homebrew-vidp) — distribution
 
 ## License
 
