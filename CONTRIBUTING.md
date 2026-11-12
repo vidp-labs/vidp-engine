@@ -1,11 +1,11 @@
-# Contributing to Vidp Engine
+# Contributing to Vingine
 
 Contributions and issues are welcome. Please open an issue before starting a
 large change so the API and platform boundaries can be discussed first.
 
 ## Contribution policy
 
-Vidp Engine uses the [Developer Certificate of Origin](DCO) instead of a CLA.
+Vingine uses the [Developer Certificate of Origin](DCO) instead of a CLA.
 By contributing, you confirm that you have the right to submit the work under
 the Apache License 2.0. Read the full DCO in [DCO](DCO).
 

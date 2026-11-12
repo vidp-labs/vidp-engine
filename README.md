@@ -1,9 +1,10 @@
-# Vidp Engine
+# Vingine
 
 The reusable, platform-neutral playback engine for [Vidp](https://github.com/vidplabs/vidp)
-applications. `vidp-engine` owns playback commands, state, metadata, track
-selection, and playback events so each Vidp application can provide its own
-native interface and platform integration.
+applications. Vingine owns playback commands, state, metadata, track selection,
+and playback events so each Vidp application can provide its own native
+interface and platform integration. The Swift package and module remain
+`VidpEngine` for source compatibility.
 
 > Early development: the public API is being established before concrete
 > platform backends are added.
